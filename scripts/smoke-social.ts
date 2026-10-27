@@ -63,3 +63,7 @@ for (const provider of ["google", "github", "apple"] as const) {
     );
   }
 }
+
+// Trailing `export {}` keeps this file a module: without it TypeScript treats
+// it as a global script and `next build` fails on the top-level `await`.
+export {};
