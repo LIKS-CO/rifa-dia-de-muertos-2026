@@ -7,7 +7,14 @@ import { migrate as migrateNeon } from "drizzle-orm/neon-http/migrator";
 
 import { RAFFLE } from "@/lib/config";
 import { db } from "@/lib/db";
-import { account, settings, tickets, user } from "@/lib/db/schema";
+import { account, tickets, user } from "@/lib/db/schema";
+
+// Bun's `import.meta.main` (not in @types/node yet).
+declare global {
+  interface ImportMeta {
+    main?: boolean;
+  }
+}
 
 async function migrate() {
   const migrationsFolder = "./drizzle";
@@ -27,21 +34,6 @@ async function seedTickets() {
     await db.insert(tickets).values(missing);
   }
   console.log(`✔️  Tickets ready (${RAFFLE.totalTickets}).`);
-}
-
-async function seedSettings() {
-  const row = await db.select().from(settings).where(eq(settings.key, "general"));
-  if (row.length === 0) {
-    await db.insert(settings).values({
-      key: "general",
-      cardQr: "",
-      bankName: "",
-      bankAccountHolder: "",
-      bankAccountNumber: "",
-      bankClabe: "",
-    });
-    console.log("✔️  Settings row created. Fill it from /admin → Configuración.");
-  }
 }
 
 async function seedAdmin() {
@@ -98,19 +90,23 @@ async function seedAdmin() {
   console.log(`✔️  Admin user created (${email}).`);
 }
 
-async function main() {
+/** Apply migrations and seed tickets + admin user (idempotent). */
+export async function runSetup() {
   await migrate();
   await seedTickets();
-  await seedSettings();
   await seedAdmin();
   console.log("\n🎉 DB ready. Start the app with `bun run dev`.");
 }
 
-main()
-  .catch((err) => {
-    console.error(err);
-    process.exit(1);
-  })
-  .finally(async () => {
-    process.exit(0);
-  });
+// Only run when executed directly (`bun scripts/db-setup.ts`), not when
+// imported by `scripts/db-reset.ts`.
+if (import.meta.main) {
+  runSetup()
+    .catch((err) => {
+      console.error(err);
+      process.exit(1);
+    })
+    .finally(async () => {
+      process.exit(0);
+    });
+}

@@ -4,7 +4,6 @@ import {
   Banknote,
   Flame,
   Gift,
-  QrCode,
   Skull,
   Sparkles,
   Ticket,
@@ -18,8 +17,8 @@ import { Card, CardContent } from "@/components/ui/card";
 import { RAFFLE, formatMxn } from "@/lib/config";
 
 export const metadata: Metadata = {
-  title: `${RAFFLE.name} · Takumi Robotics × LIKS`,
-  description: `Participa por el altar de Día de Muertos en corte láser y apoya a Takumi Robotics y a LIKS. ${RAFFLE.totalTickets} boletos de ${formatMxn(RAFFLE.ticketPriceMxn)}.`,
+  title: `${RAFFLE.name} · Takumi Robotics × LIKS Theater Company`,
+  description: `Participa por el altar de Día de Muertos en corte láser y apoya a Takumi Robotics y a LIKS Theater Company. ${RAFFLE.totalTickets} boletos de ${formatMxn(RAFFLE.ticketPriceMxn)}.`,
 };
 
 export default function LandingPage() {
@@ -57,7 +56,7 @@ export default function LandingPage() {
           Un altar ceremonial en <strong className="text-foreground">corte láser</strong> para
           recordar a los que se fueron — todo mientras apoyas a{" "}
           <strong className="text-foreground">Takumi Robotics</strong> y a{" "}
-          <strong className="text-foreground">LIKS Compañía de Teatro</strong>.
+          <strong className="text-foreground">LIKS Theater Company</strong>.
         </p>
 
         {/* stats */}
@@ -124,7 +123,7 @@ export default function LandingPage() {
               emoji="🤖"
             />
             <OrgCard
-              name="LIKS Compañía de Teatro"
+              name="LIKS Theater Company"
               tagline="El teatro como puente"
               body="Compañía que lleva historias a escena, promueve las artes y construye comunidad a través de la cultura y el teatro independiente."
               emoji="🎭"
@@ -159,7 +158,7 @@ export default function LandingPage() {
           <StepCard
             n="3"
             title="Paga y espera la suerte"
-            body="Efectivo, tarjeta (QR) o transferencia (CLABE). Si pagas con tarjeta o transferencia, sube tu comprobante y un administrador lo confirma."
+            body="El pago es en efectivo: entrega el dinero a los organizadores y un administrador marcará tus boletos como pagados."
           />
         </div>
         <div className="mt-10 space-y-3 text-center text-sm text-muted-foreground md:text-base">
@@ -175,7 +174,7 @@ export default function LandingPage() {
             El 2 de noviembre, un <span className="text-glow-marigold text-primary">altar</span> busca dueñ@
           </h2>
           <p className="mx-auto mt-4 max-w-xl text-muted-foreground md:text-lg">
-            Apoya a Takumi Robotics y LIKS, y llévate una pieza única hecha con láser y dedicación.
+            Apoya a Takumi Robotics y LIKS Theater Company, y llévate una pieza única hecha con láser y dedicación.
           </p>
           <Button
             render={<Link href="/signup" />}
@@ -192,9 +191,7 @@ export default function LandingPage() {
       <section className="mx-auto max-w-3xl px-4 py-12">
         <h2 className="font-display text-center text-2xl font-semibold">Preguntas frecuentes</h2>
         <div className="mt-6 grid gap-3 text-sm">
-          <Faq q="¿Cómo pago con tarjeta?" a="Selecciona “Tarjeta / QR”, escanea el código QR con tu app bancaria, paga, y sube una foto del comprobante. Un administrador lo valida." />
-          <Faq q="¿Cómo pago por transferencia?" a="Selecciona “Transferencia” y verás la CLABE y los datos bancarios. Transfiere el monto exacto y sube tu comprobante para validación." />
-          <Faq q="¿Puedo pagar en efectivo?" a="Sí. Elige “Efectivo”, apunta tus números y ponte en contacto con los organizadores para entregar el dinero. Solo los administradores pueden marcarlo como pagado." />
+          <Faq q="¿Cómo pago?" a="Solo aceptamos efectivo. Aparta tus números en el tablero y entrega el dinero a los organizadores de Takumi Robotics o LIKS Theater Company. Un administrador marcará tus boletos como pagados." />
           <Faq q="¿Qué pasa si no pago mis boletos apartados?" a="Se liberan de nuevo tras la rifa. Si quieres liberarlos antes, puedes cancelar la orden desde tu tablero." />
         </div>
       </section>
@@ -202,7 +199,7 @@ export default function LandingPage() {
       {/* ── Footer ── */}
       <footer className="relative border-t border-primary/15 py-8 text-center text-xs text-muted-foreground">
         <p>
-          💀 Rifa organizada por Takumi Robotics y LIKS Compañía de Teatro ·{" "}
+          💀 Rifa organizada por Takumi Robotics y LIKS Theater Company ·{" "}
           {RAFFLE.totalTickets} boletos · {formatMxn(RAFFLE.ticketPriceMxn)} MXN c/u
         </p>
         <Link href="/admin" className="mt-2 inline-block text-muted-foreground/60 hover:text-muted-foreground">
@@ -292,7 +289,7 @@ function AltarScene() {
       </div>
       <div className="flex justify-center gap-8 text-xs text-muted-foreground">
         <span className="inline-flex items-center gap-1">
-          <QrCode className="size-3" /> 100 boletos
+          <Ticket className="size-3" /> 100 boletos
         </span>
         <span className="inline-flex items-center gap-1">
           <Banknote className="size-3" /> {formatMxn(RAFFLE.ticketPriceMxn)}

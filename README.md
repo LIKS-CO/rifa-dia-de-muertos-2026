@@ -1,6 +1,6 @@
-# 🦴 Rifa Día de Muertos — Takumi Robotics × LIKS
+# 🦴 Rifa Día de Muertos — Takumi Robotics × LIKS Theater Company
 
-Raffle site for **Takumi Robotics** and **LIKS Compañía de Teatro**: 100 tickets, $50 MXN each,
+Raffle site for **Takumi Robotics** and **LIKS Theater Company**: 100 tickets, $50 MXN each,
 prize = a laser-cut **Día de Muertos altar**. Built with Next.js 16, shadcn/ui (base-nova,
 amber/mauve preset `b3kJBQZay`), Better Auth, Drizzle ORM and Neon.
 Runs on **Bun**.
@@ -18,19 +18,14 @@ Runs on **Bun**.
   - Google, GitHub and Apple sign-in (shown only when configured).
 - **User dashboard**
   - Live grid of the 100 tickets (available / selected / yours / taken).
-  - Buy tickets: pick numbers → choose payment method.
-  - **Tarjeta / QR**: shows the QR to scan; upload a proof picture.
-  - **Transferencia**: shows bank details + **CLABE** (copy-to-clipboard); upload a proof picture.
-  - **Efectivo**: only an admin can mark it as paid.
+  - Buy tickets: pick numbers → pay in **cash** to the organizers (an admin marks them as paid).
   - Cancel an un-paid order (tickets are released).
 - **Admin panel** (`/admin`, credentials `admin` / `4dmiN123*` by default)
   - Statistics: money collected / pending / expected, tickets sold & remaining, per-method breakdown.
-  - Payments: view proofs, **two-step verification** (Revisión 1 → Marcar como pagado) for
-    card/transfer, single-step for cash, cancel & release.
+  - Payments: confirm payments ("Marcar como pagado") and cancel & release tickets.
   - Tickets map with owner (name + email).
   - Users ledger: how many tickets each user has, **how much they owe** and **how much they
     already paid** (supports buy → pay → buy again).
-  - Settings: set the **QR image** for card payments and the **bank details / CLABE** for transfers.
 
 ---
 
@@ -47,7 +42,7 @@ bun install
 cp .env.example .env
 # edit .env as you like
 
-# 3) create tables + seed (100 tickets, settings row, admin user)
+# 3) create tables + seed (100 tickets, admin user)
 bun run db:setup
 
 # 4) run dev
@@ -119,6 +114,7 @@ bun run dev          # dev server
 bun run build        # production build
 bun run lint         # eslint
 bun run db:setup     # generate migrations + apply + seed (dev DB or DATABASE_URL)
+bun run db:reset     # drop all tables + re-seed (asks for confirmation; --yes to skip)
 bun run db:generate  # drizzle-kit generate (new migration)
 bun run db:studio    # drizzle studio to browse the database
 ```
@@ -137,12 +133,12 @@ app/
 components/
   auth/               # sign up / login / verify-email / logout
   dashboard/          # ticket grid, orders, payment instructions
-  admin/              # stats, payments, tickets, users, settings tabs
+  admin/              # stats, payments, tickets, users tabs
   dia/                # Día de Muertos decorations (marigold, papel picado…)
   ui/                 # shadcn/ui components (base-nova)
 lib/
   auth.ts             # Better Auth server config (email OTP + social + admin)
-  actions.ts          # server actions (buy, proofs, admin verification…)
+  actions.ts          # server actions (buy, admin confirmation…)
   queries.ts          # data access layer
   db/                 # drizzle schema, lazy DB factory (Neon | PGlite)
 ```
@@ -150,10 +146,7 @@ lib/
 ## 🧾 Payment states
 
 ```
-purchase created ─ pending ─┬─ cash ────────────► admin: "Marcar como pagado" ─► paid
-                            └─ card/transfer ──► user uploads proof ─ in_review
-                                                ► admin: "Revisión 1" ─ verified
-                                                ► admin: "Marcar como pagado" ─► paid
+purchase created ─ pending ─► admin: "Marcar como pagado" ─► paid
 (any non-paid order can be cancelled → tickets released back to available)
 ```
 

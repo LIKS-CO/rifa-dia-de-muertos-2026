@@ -9,6 +9,7 @@
     "lint": "eslint",
     "db:generate": "drizzle-kit generate",
     "db:setup": "bun run db:generate && bun scripts/db-setup.ts",
+    "db:reset": "bun scripts/db-reset.ts",
     "db:studio": "drizzle-kit studio"
   },
   "dependencies": {

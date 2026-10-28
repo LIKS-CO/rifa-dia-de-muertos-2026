@@ -56,7 +56,7 @@ export function emailLayout(opts: {
 <html>
   <body style="margin:0;background:#1a1018;color:#fde9d0;font-family:Georgia,serif;">
     <div style="max-width:520px;margin:0 auto;padding:32px 20px;">
-      <p style="font-size:13px;color:#e8a04c;letter-spacing:2px;text-transform:uppercase;">🦴 Rifa Día de Muertos · Takumi Robotics × LIKS</p>
+      <p style="font-size:13px;color:#e8a04c;letter-spacing:2px;text-transform:uppercase;">🦴 Rifa Día de Muertos · Takumi Robotics × LIKS Theater Company</p>
       <h1 style="color:#f7b733;font-size:24px;margin:12px 0;">${title}</h1>
       <div style="background:#2a1822;border:1px solid #4a2a3a;border-radius:12px;padding:20px;margin:16px 0;">
         <p style="margin:0 0 8px;line-height:1.6;">${body}</p>

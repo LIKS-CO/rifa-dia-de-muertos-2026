@@ -6,20 +6,16 @@ import { LogoutButton } from "@/components/auth/logout-button";
 import { DashboardClient, type DashboardTicket } from "@/components/dashboard/dashboard-client";
 import { Button } from "@/components/ui/button";
 import { RAFFLE } from "@/lib/config";
-import { db } from "@/lib/db";
-import { settings } from "@/lib/db/schema";
 import { getAllTickets, getMyPayments, requireUser } from "@/lib/queries";
-import { eq } from "drizzle-orm";
 
 export const metadata: Metadata = { title: "Mi tablero" };
 
 export default async function DashboardPage() {
   const user = await requireUser();
 
-  const [allTickets, myPayments, settingsRow] = await Promise.all([
+  const [allTickets, myPayments] = await Promise.all([
     getAllTickets(),
     getMyPayments(user.id),
-    db.select().from(settings).where(eq(settings.key, "general")).limit(1),
   ]);
 
   // group ticket numbers per payment
@@ -38,8 +34,6 @@ export default async function DashboardPage() {
     method: p.method,
     amountMxn: p.amountMxn,
     status: p.status,
-    verified: p.verified,
-    proofData: p.proofData,
     createdAt: p.createdAt.toISOString(),
     ticketNumbers: ticketsByPayment.get(p.id) ?? [],
   }));
@@ -49,16 +43,6 @@ export default async function DashboardPage() {
     status: t.status,
     userId: t.userId,
   }));
-
-  const settingsForClient = settingsRow[0]
-    ? {
-        cardQr: settingsRow[0].cardQr,
-        bankName: settingsRow[0].bankName,
-        bankAccountHolder: settingsRow[0].bankAccountHolder,
-        bankAccountNumber: settingsRow[0].bankAccountNumber,
-        bankClabe: settingsRow[0].bankClabe,
-      }
-    : null;
 
   return (
     <main className="relative min-h-dvh bg-background">
@@ -99,7 +83,6 @@ export default async function DashboardPage() {
           userId={user.id}
           tickets={ticketRows}
           payments={myPaymentRows}
-          settings={settingsForClient}
         />
       </div>
     </main>

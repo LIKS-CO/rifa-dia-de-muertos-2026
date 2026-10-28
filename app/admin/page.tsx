@@ -2,23 +2,21 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { ArrowLeft, ShieldCheck } from "lucide-react";
 
-import { AdminClient, type AdminOwner, type AdminPayment, type AdminSettings, type AdminTicket, type AdminUser } from "@/components/admin/admin-client";
+import { AdminClient, type AdminOwner, type AdminPayment, type AdminTicket, type AdminUser } from "@/components/admin/admin-client";
 import { LogoutButton } from "@/components/auth/logout-button";
 import { RAFFLE } from "@/lib/config";
 import { db } from "@/lib/db";
-import { settings, user as userTable } from "@/lib/db/schema";
+import { user as userTable } from "@/lib/db/schema";
 import { getAllTickets, getPaymentsWithUsers, requireAdmin } from "@/lib/queries";
-import { eq } from "drizzle-orm";
 
 export const metadata: Metadata = { title: "Panel de administración" };
 
 export default async function AdminPage() {
   const admin = await requireAdmin();
 
-  const [ticketsAll, paymentsWithUsers, settingsRows, allUsers] = await Promise.all([
+  const [ticketsAll, paymentsWithUsers, allUsers] = await Promise.all([
     getAllTickets(),
     getPaymentsWithUsers(),
-    db.select().from(settings).where(eq(settings.key, "general")).limit(1),
     db.select({ id: userTable.id, name: userTable.name, email: userTable.email, role: userTable.role }).from(userTable),
   ]);
 
@@ -41,8 +39,6 @@ export default async function AdminPage() {
     method: payment.method,
     amountMxn: payment.amountMxn,
     status: payment.status,
-    verified: payment.verified,
-    proofData: payment.proofData,
     createdAt: payment.createdAt.toISOString(),
     confirmedAt: payment.confirmedAt?.toISOString() ?? null,
     userName,
@@ -96,16 +92,6 @@ export default async function AdminPage() {
     .map(([id, e]) => ({ id, role: usersById.get(id)?.role ?? null, ...e }))
     .sort((a, b) => b.paidMxn + b.owedMxn - (a.paidMxn + a.owedMxn));
 
-  const adminSettings: AdminSettings = settingsRows[0]
-    ? {
-        cardQr: settingsRows[0].cardQr ?? "",
-        bankName: settingsRows[0].bankName ?? "",
-        bankAccountHolder: settingsRows[0].bankAccountHolder ?? "",
-        bankAccountNumber: settingsRows[0].bankAccountNumber ?? "",
-        bankClabe: settingsRows[0].bankClabe ?? "",
-      }
-    : { cardQr: "", bankName: "", bankAccountHolder: "", bankAccountNumber: "", bankClabe: "" };
-
   return (
     <main className="relative min-h-dvh bg-background">
       <header className="relative z-10 mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-3 px-4 pt-10 pb-2">
@@ -131,7 +117,6 @@ export default async function AdminPage() {
           payments={adminPayments}
           tickets={adminTickets}
           users={adminUsers}
-          settings={adminSettings}
           owners={allUsers.map(
             (u): AdminOwner => ({ id: u.id, name: u.name, email: u.email }),
           )}

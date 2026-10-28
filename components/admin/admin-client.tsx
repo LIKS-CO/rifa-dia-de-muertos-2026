@@ -1,15 +1,12 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
+import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
-  Banknote,
   CheckCircle2,
   ClipboardList,
-  Image as ImageIcon,
   LayoutDashboard,
   Loader2,
-  Settings as SettingsIcon,
   Ticket as TicketIcon,
   Users as UsersIcon,
   XCircle,
@@ -17,15 +14,11 @@ import {
 import { toast } from "sonner";
 
 import { StatusBadge } from "@/components/dashboard/dashboard-client";
-import { adminCancelPayment, adminConfirmPayment, adminFirstCheck, adminUpdateSettings } from "@/lib/actions";
-import { fileToCompressedJpeg } from "@/lib/client-image";
+import { adminCancelPayment, adminConfirmPayment } from "@/lib/actions";
 import { PAYMENT_METHODS, formatDate, formatMxn } from "@/lib/config";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
 import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -36,8 +29,6 @@ export type AdminPayment = {
   method: string;
   amountMxn: number;
   status: string;
-  verified: boolean;
-  proofData: string | null;
   createdAt: string;
   confirmedAt: string | null;
   userName: string | null;
@@ -67,25 +58,15 @@ export type AdminOwner = {
   email: string;
 };
 
-export type AdminSettings = {
-  cardQr: string;
-  bankName: string;
-  bankAccountHolder: string;
-  bankAccountNumber: string;
-  bankClabe: string;
-};
-
 export function AdminClient({
   payments,
   tickets,
   users,
-  settings,
   owners,
 }: {
   payments: AdminPayment[];
   tickets: AdminTicket[];
   users: AdminUser[];
-  settings: AdminSettings;
   owners: AdminOwner[];
 }) {
   return (
@@ -96,9 +77,9 @@ export function AdminClient({
         </TabsTrigger>
         <TabsTrigger value="pagos" className="gap-1.5">
           <ClipboardList /> Pagos
-          {payments.some((p) => p.status === "in_review" || p.status === "verified" || (p.status === "pending" && p.method !== "cash")) && (
+          {payments.some((p) => p.status === "pending") && (
             <span className="ml-1 rounded-full bg-primary px-1.5 text-[10px] font-bold text-primary-foreground">
-              {payments.filter((p) => !["paid", "cancelled"].includes(p.status) && (p.status !== "pending" || p.method === "cash")).length}
+              {payments.filter((p) => p.status === "pending").length}
             </span>
           )}
         </TabsTrigger>
@@ -107,9 +88,6 @@ export function AdminClient({
         </TabsTrigger>
         <TabsTrigger value="usuarios" className="gap-1.5">
           <UsersIcon /> Usuarios
-        </TabsTrigger>
-        <TabsTrigger value="config" className="gap-1.5">
-          <SettingsIcon /> Configuración
         </TabsTrigger>
       </TabsList>
 
@@ -124,9 +102,6 @@ export function AdminClient({
       </TabsContent>
       <TabsContent value="usuarios">
         <UsersTab users={users} />
-      </TabsContent>
-      <TabsContent value="config">
-        <SettingsTab settings={settings} />
       </TabsContent>
     </Tabs>
   );
@@ -236,25 +211,17 @@ function PaymentsTab({ payments }: { payments: AdminPayment[] }) {
 
 function PaymentAdminRow({ payment }: { payment: AdminPayment }) {
   const router = useRouter();
-  const [busy, setBusy] = useState<string | null>(null);
+  const [busy, setBusy] = useState<"confirm" | "cancel" | null>(null);
 
-  async function run(action: "first" | "confirm" | "cancel") {
+  async function run(action: "confirm" | "cancel") {
     setBusy(action);
-    const fn =
-      action === "first"
-        ? adminFirstCheck
-        : action === "confirm"
-          ? adminConfirmPayment
-          : adminCancelPayment;
-    const res = await fn(payment.id);
+    const res = action === "confirm" ? await adminConfirmPayment(payment.id) : await adminCancelPayment(payment.id);
     setBusy(null);
     if (res.ok) {
       toast.success(
-        action === "first"
-          ? "Comprobante aprobado (revisión 1)."
-          : action === "confirm"
-            ? "¡Pago confirmado y boletos marcados como pagados!"
-            : "Pago cancelado y boletos liberados.",
+        action === "confirm"
+          ? "¡Pago confirmado y boletos marcados como pagados!"
+          : "Pago cancelado y boletos liberados.",
       );
       router.refresh();
     } else {
@@ -263,8 +230,6 @@ function PaymentAdminRow({ payment }: { payment: AdminPayment }) {
     }
   }
 
-  const needsFirstCheck =
-    payment.method !== "cash" && !payment.verified && ["pending", "in_review", "verified"].includes(payment.status);
   const canConfirm = payment.status !== "paid" && payment.status !== "cancelled";
   const canCancel = payment.status !== "paid" && payment.status !== "cancelled";
 
@@ -294,39 +259,12 @@ function PaymentAdminRow({ payment }: { payment: AdminPayment }) {
         </div>
 
         <div className="flex flex-wrap items-center gap-2 md:justify-end">
-          {payment.proofData && (
-            <Dialog>
-              <DialogTrigger render={<Button variant="outline" size="sm" />}>
-                <ImageIcon /> Ver comprobante
-              </DialogTrigger>
-              <DialogContent className="sm:max-w-lg">
-                <DialogHeader>
-                  <DialogTitle>Comprobante · Orden #{payment.id}</DialogTitle>
-                  <DialogDescription>
-                    {payment.userName} ({payment.userEmail}) · {formatMxn(payment.amountMxn)}
-                  </DialogDescription>
-                </DialogHeader>
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={payment.proofData} alt="Comprobante de pago" className="max-h-[60vh] w-full rounded-lg border object-contain" />
-              </DialogContent>
-            </Dialog>
-          )}
-          {needsFirstCheck && (
-            <Button size="sm" variant="secondary" onClick={() => run("first")} disabled={busy !== null}>
-              {busy === "first" ? <Loader2 className="animate-spin" /> : <CheckCircle2 />}
-              Revisión 1: aprobar comprobante
-            </Button>
-          )}
           {canConfirm && (
             <Button
               size="sm"
               onClick={() => run("confirm")}
-              disabled={busy !== null || (payment.method !== "cash" && !payment.verified)}
-              title={
-                payment.method !== "cash" && !payment.verified
-                  ? "Primero aprueba el comprobante (revisión 1)"
-                  : "Marcar como pagado y confirmar boletos"
-              }
+              disabled={busy !== null}
+              title="Marcar como pagado y confirmar boletos"
             >
               {busy === "confirm" ? <Loader2 className="animate-spin" /> : <CheckCircle2 />}
               Marcar como pagado
@@ -464,110 +402,5 @@ function UsersTab({ users }: { users: AdminUser[] }) {
         </table>
       </CardContent>
     </Card>
-  );
-}
-
-/* ─────────────────────── Configuración ─────────────────────── */
-
-function SettingsTab({ settings }: { settings: AdminSettings }) {
-  const formRef = useRef<HTMLFormElement>(null);
-  const fileRef = useRef<HTMLInputElement>(null);
-  const [qrUrl, setQrUrl] = useState(settings.cardQr);
-  const [saving, setSaving] = useState(false);
-
-  async function onUpload(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    try {
-      const img = await fileToCompressedJpeg(file, 900, 0.8);
-      const buf = await img.arrayBuffer();
-      const base64 = btoa(String.fromCharCode(...new Uint8Array(buf)));
-      setQrUrl(`data:image/jpeg;base64,${base64}`);
-      toast.success("QR cargado. Guarda los cambios para aplicarlo.");
-    } catch {
-      toast.error("No se pudo procesar el QR");
-    } finally {
-      if (fileRef.current) fileRef.current.value = "";
-    }
-  }
-
-  async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
-    e.preventDefault();
-    setSaving(true);
-    const fd = new FormData(e.currentTarget);
-    fd.set("cardQr", qrUrl);
-    const res = await adminUpdateSettings(fd);
-    setSaving(false);
-    if (res.ok) {
-      toast.success("Configuración guardada. Los compradores ya la verán.");
-    } else {
-      toast.error(res.error ?? "No se pudo guardar");
-    }
-  }
-
-  return (
-    <form ref={formRef} onSubmit={onSubmit} className="grid max-w-2xl gap-5">
-      <Card>
-        <CardHeader className="pb-2">
-          <CardTitle className="flex items-center gap-2 text-lg">
-            <Banknote /> Pago con tarjeta (QR)
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="grid gap-3">
-          <div className="grid gap-1.5">
-            <Label htmlFor="cardQr">URL del código QR</Label>
-            <Input id="cardQr" name="cardQr" placeholder="https://… o imagen cargada" value={qrUrl} onChange={(e) => setQrUrl(e.target.value)} />
-          </div>
-          <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={onUpload} />
-          <div className="flex items-center gap-2">
-            <Button type="button" variant="outline" size="sm" onClick={() => fileRef.current?.click()}>
-              <ImageIcon /> Cargar imagen QR
-            </Button>
-            {qrUrl && (
-              <div className="w-16 rounded-lg border bg-white p-1">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={qrUrl} alt="Vista previa del QR" className="w-full" />
-              </div>
-            )}
-          </div>
-          <p className="text-xs text-muted-foreground">
-            Los compradores ven este QR al elegir «Tarjeta / QR».
-          </p>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader className="pb-2">
-          <CardTitle className="flex items-center gap-2 text-lg">
-            <Banknote /> Transferencia (CLABE)
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="grid gap-3">
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-            <Field label="Banco" name="bankName" defaultValue={settings.bankName} />
-            <Field label="Titular" name="bankAccountHolder" defaultValue={settings.bankAccountHolder} />
-            <Field label="Número de cuenta" name="bankAccountNumber" defaultValue={settings.bankAccountNumber} />
-            <Field label="CLABE interbancaria" name="bankClabe" defaultValue={settings.bankClabe} />
-          </div>
-          <p className="text-xs text-muted-foreground">
-            Los compradores ven estos datos al elegir «Transferencia».
-          </p>
-        </CardContent>
-      </Card>
-
-      <Button type="submit" size="lg" className="justify-self-start" disabled={saving}>
-        {saving ? <Loader2 className="animate-spin" /> : <CheckCircle2 />}
-        Guardar configuración
-      </Button>
-    </form>
-  );
-}
-
-function Field({ label, name, defaultValue }: { label: string; name: string; defaultValue: string }) {
-  return (
-    <div className="grid gap-1.5">
-      <Label htmlFor={name}>{label}</Label>
-      <Input id={name} name={name} defaultValue={defaultValue} />
-    </div>
   );
 }

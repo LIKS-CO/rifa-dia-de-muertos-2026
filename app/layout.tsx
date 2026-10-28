@@ -18,10 +18,10 @@ const cormorant = Cormorant_Garamond({
 
 export const metadata: Metadata = {
   title: {
-    default: `${RAFFLE.name} · Takumi Robotics × LIKS`,
+    default: `${RAFFLE.name} · Takumi Robotics × LIKS Theater Company`,
     template: `%s · ${RAFFLE.name}`,
   },
-  description: `Participa en la rifa que apoya a Takumi Robotics y LIKS. ${RAFFLE.totalTickets} boletos de ${RAFFLE.ticketPriceMxn
+  description: `Participa en la rifa que apoya a Takumi Robotics y LIKS Theater Company. ${RAFFLE.totalTickets} boletos de ${RAFFLE.ticketPriceMxn
     .toLocaleString("es-MX")} MXN · ¡Gana un altar de Día de Muertos hecho en corte láser!`,
 };
 

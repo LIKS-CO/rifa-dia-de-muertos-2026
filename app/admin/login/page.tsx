@@ -26,7 +26,7 @@ export default async function AdminLoginPage() {
             </div>
             <CardTitle className="font-display text-2xl">Panel de administración</CardTitle>
             <p className="text-sm text-muted-foreground">
-              Solo para organizadores de Takumi Robotics y LIKS.
+              Solo para organizadores de Takumi Robotics y LIKS Theater Company.
             </p>
           </CardHeader>
           <CardContent>

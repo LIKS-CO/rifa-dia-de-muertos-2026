@@ -6,15 +6,12 @@ import { redirect } from "next/navigation";
 import { and, eq, inArray } from "drizzle-orm";
 
 import { auth } from "@/lib/auth";
-import { ADMIN_CREDENTIALS, PAYMENT_METHODS, RAFFLE } from "@/lib/config";
+import { ADMIN_CREDENTIALS, RAFFLE } from "@/lib/config";
 import { db } from "@/lib/db";
-import { payments, settings, tickets } from "@/lib/db/schema";
+import { payments, tickets } from "@/lib/db/schema";
 import { getSessionUser } from "@/lib/queries";
 
 const MAX_PER_PURCHASE = 20;
-const MAX_PROOF_BYTES = 6 * 1024 * 1024;
-
-const VALID_METHODS = Object.keys(PAYMENT_METHODS) as (keyof typeof PAYMENT_METHODS)[];
 
 function now() {
   return new Date();
@@ -29,7 +26,7 @@ function now() {
  * The optimistic UPDATE ... WHERE status = 'available' guard makes the
  * race between two buyers safe without a DB transaction.
  */
-export async function createPurchase(numbers: number[], method: string) {
+export async function createPurchase(numbers: number[]) {
   const user = await getSessionUser();
   if (!user) return { ok: false as const, error: "Inicia sesión para comprar boletos." };
 
@@ -41,9 +38,6 @@ export async function createPurchase(numbers: number[], method: string) {
   if (valid.length < 1) return { ok: false as const, error: "Selecciona al menos un boleto." };
   if (valid.length > MAX_PER_PURCHASE) {
     return { ok: false as const, error: `Máximo ${MAX_PER_PURCHASE} boletos por compra.` };
-  }
-  if (!VALID_METHODS.includes(method as keyof typeof PAYMENT_METHODS)) {
-    return { ok: false as const, error: "Método de pago no válido." };
   }
 
   // 1) Optimistically reserve only still-available tickets.
@@ -81,7 +75,7 @@ export async function createPurchase(numbers: number[], method: string) {
       .insert(payments)
       .values({
         userId: user.id,
-        method: method as keyof typeof PAYMENT_METHODS,
+        method: "cash",
         amountMxn: valid.length * RAFFLE.ticketPriceMxn,
         status: "pending",
       })
@@ -99,44 +93,6 @@ export async function createPurchase(numbers: number[], method: string) {
 
   revalidatePath("/dashboard");
   return { ok: true as const, paymentId, tickets: valid };
-}
-
-/** Attach a proof-of-payment picture (card/transfer). */
-export async function uploadProof(paymentId: number, file: File) {
-  const user = await getSessionUser();
-  if (!user) return { ok: false as const, error: "Inicia sesión." };
-
-  const [payment] = await db
-    .select()
-    .from(payments)
-    .where(and(eq(payments.id, paymentId), eq(payments.userId, user.id)))
-    .limit(1);
-  if (!payment) return { ok: false as const, error: "No se encontró el pago." };
-  if (payment.status !== "pending") {
-    return { ok: false as const, error: "Este pago ya no acepta comprobantes." };
-  }
-  if (payment.method === "cash") {
-    return { ok: false as const, error: "El pago en efectivo no requiere comprobante." };
-  }
-  if (!file || !file.type.startsWith("image/")) {
-    return { ok: false as const, error: "Sube una imagen (PNG/JPG)." };
-  }
-  if (file.size > MAX_PROOF_BYTES) {
-    return { ok: false as const, error: "La imagen pesa más de 6 MB." };
-  }
-
-  const buf = await file.arrayBuffer();
-  const base64 = Buffer.from(buf).toString("base64");
-  const dataUrl = `data:${file.type};base64,${base64}`;
-
-  await db
-    .update(payments)
-    .set({ proofData: dataUrl, proofMime: file.type, status: "in_review", updatedAt: now() })
-    .where(eq(payments.id, paymentId));
-
-  revalidatePath("/dashboard");
-  revalidatePath("/admin");
-  return { ok: true as const };
 }
 
 /** Allow a user to cancel one of their own non-paid purchases (releases tickets). */
@@ -175,30 +131,7 @@ async function requireAdminUser() {
   return user;
 }
 
-/** Step 1 for card/transfer: review + approve the uploaded proof. */
-export async function adminFirstCheck(paymentId: number) {
-  const admin = await requireAdminUser();
-  if (!admin) return { ok: false as const, error: "No autorizado." };
-
-  const [payment] = await db.select().from(payments).where(eq(payments.id, paymentId)).limit(1);
-  if (!payment) return { ok: false as const, error: "No se encontró el pago." };
-  if (payment.status === "paid" || payment.status === "cancelled") return { ok: false as const, error: "Pago cerrado." };
-  if (payment.method === "cash") {
-    return { ok: false as const, error: "El pago en efectivo no usa comprobante; márcalo como pagado directamente." };
-  }
-  if (!payment.proofData) return { ok: false as const, error: "El usuario aún no sube el comprobante." };
-
-  await db
-    .update(payments)
-    .set({ verified: true, status: "verified", updatedAt: now() })
-    .where(eq(payments.id, paymentId));
-
-  revalidatePath("/admin");
-  revalidatePath("/dashboard");
-  return { ok: true as const };
-}
-
-/** Final step: mark the payment as received and the tickets as paid. */
+/** Mark the payment as received and the tickets as paid. */
 export async function adminConfirmPayment(paymentId: number) {
   const admin = await requireAdminUser();
   if (!admin) return { ok: false as const, error: "No autorizado." };
@@ -208,16 +141,10 @@ export async function adminConfirmPayment(paymentId: number) {
   if (payment.status === "paid") return { ok: false as const, error: "Ya está pagado." };
   if (payment.status === "cancelled") return { ok: false as const, error: "El pago fue cancelado." };
 
-  // Card/transfer: the proof must have passed the first review.
-  if (payment.method !== "cash" && !payment.verified) {
-    return { ok: false as const, error: "Primero aprueba el comprobante (revisión 1)." };
-  }
-
   await db
     .update(payments)
     .set({
       status: "paid",
-      verified: true,
       confirmedAt: now(),
       confirmedBy: admin.id,
       updatedAt: now(),
@@ -248,39 +175,6 @@ export async function adminCancelPayment(paymentId: number) {
     .update(tickets)
     .set({ userId: null, paymentId: null, status: "available" })
     .where(eq(tickets.paymentId, paymentId));
-
-  revalidatePath("/admin");
-  revalidatePath("/dashboard");
-  return { ok: true as const };
-}
-
-/** Update payment settings shown to buyers (QR for card, CLABE for transfers). */
-export async function adminUpdateSettings(formData: FormData) {
-  const admin = await requireAdminUser();
-  if (!admin) return { ok: false as const, error: "No autorizado." };
-
-  const cardQr = String(formData.get("cardQr") ?? "").trim();
-  const bankName = String(formData.get("bankName") ?? "").trim();
-  const bankAccountHolder = String(formData.get("bankAccountHolder") ?? "").trim();
-  const bankAccountNumber = String(formData.get("bankAccountNumber") ?? "").trim();
-  const bankClabe = String(formData.get("bankClabe") ?? "").trim();
-
-  const existing = await db.select().from(settings).where(eq(settings.key, "general")).limit(1);
-  if (existing.length > 0) {
-    await db
-      .update(settings)
-      .set({ cardQr, bankName, bankAccountHolder, bankAccountNumber, bankClabe, updatedAt: now() })
-      .where(eq(settings.key, "general"));
-  } else {
-    await db.insert(settings).values({
-      key: "general",
-      cardQr,
-      bankName,
-      bankAccountHolder,
-      bankAccountNumber,
-      bankClabe,
-    });
-  }
 
   revalidatePath("/admin");
   revalidatePath("/dashboard");
@@ -322,5 +216,4 @@ export async function adminLogin(
 }
 
 export type PurchaseResult = Awaited<ReturnType<typeof createPurchase>>;
-export type ProofResult = Awaited<ReturnType<typeof uploadProof>>;
 export type SimpleResult = { ok: boolean; error?: string };

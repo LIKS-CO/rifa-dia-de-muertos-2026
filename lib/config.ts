@@ -9,7 +9,7 @@ export const RAFFLE = {
   /** Price per ticket in MXN */
   ticketPriceMxn: Number(process.env.RAFFLE_TICKET_PRICE ?? 50),
   /** Beneficiary organizations */
-  organizations: ["Takumi Robotics", "LIKS Compañía de Teatro"],
+  organizations: ["Takumi Robotics", "LIKS Theater Company"],
   /** Prize description */
   prize: "Altar de Día de Muertos en corte láser",
   /** Currency formatting locale */
@@ -34,19 +34,15 @@ export function formatDate(date: Date | string | null | undefined): string {
   }).format(new Date(date));
 }
 
-/** Payment method labels */
+/** Payment method labels (only cash is accepted) */
 export const PAYMENT_METHODS = {
   cash: "Efectivo",
-  card: "Tarjeta / QR",
-  transfer: "Transferencia",
 } as const;
 
 export type PaymentMethod = keyof typeof PAYMENT_METHODS;
 
 export const PAYMENT_STATUS: Record<string, { label: string; tone: "default" | "secondary" | "destructive" | "outline" }> = {
   pending: { label: "Pendiente", tone: "secondary" },
-  in_review: { label: "En revisión (comprobante subido)", tone: "default" },
-  verified: { label: "Verificado · falta confirmar", tone: "default" },
   paid: { label: "Pagado ✓", tone: "secondary" },
   cancelled: { label: "Cancelado", tone: "destructive" },
 };
