@@ -8,7 +8,7 @@ import { asc, desc, eq } from "drizzle-orm";
 
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
-import { payments, tickets, user as userTable } from "@/lib/db/schema";
+import { payments, settings, tickets, user as userTable } from "@/lib/db/schema";
 import { RAFFLE } from "@/lib/config";
 
 export type SessionUser = {
@@ -49,6 +49,12 @@ export async function requireAdmin(): Promise<SessionUser> {
   if (u.role !== "admin") redirect("/admin/login");
   return u;
 }
+
+/** Raffle settings row (single "general" row). */
+export const getSettings = cache(async () => {
+  const rows = await db.select().from(settings).where(eq(settings.key, "general")).limit(1);
+  return rows[0] ?? null;
+});
 
 export async function getAllTickets() {
   return db.select().from(tickets).orderBy(asc(tickets.number));
@@ -112,5 +118,6 @@ export function userLedger(
 
 export type {
   PaymentRow,
+  SettingsRow,
   TicketRow,
 } from "@/lib/db/schema";

@@ -1,4 +1,5 @@
 import {
+  boolean,
   integer,
   pgTable,
   serial,
@@ -28,19 +29,27 @@ export const tickets = pgTable("tickets", {
 });
 
 /**
- * A purchase/order of one or more tickets (paid in cash).
+ * A purchase/order of one or more tickets.
  *
  * status:
- *  - pending    → created; awaits admin confirmation
- *  - paid       → confirmed by an admin; tickets marked as paid
+ *  - pending    → created; cash awaits admin, transfer awaits proof upload
+ *  - in_review  → proof uploaded; awaiting admin review
+ *  - verified   → admin approved the proof; awaiting final confirmation
+ *  - paid       → fully confirmed; tickets marked as paid
  *  - cancelled  → released; tickets freed
+ *
+ * verified: true when an admin approved the uploaded proof.
  */
 export const payments = pgTable("payments", {
   id: serial("id").primaryKey(),
   userId: text("user_id").notNull(),
-  method: text("method").notNull(), // cash
+  method: text("method").notNull(), // cash | transfer
   amountMxn: integer("amount_mxn").notNull(),
   status: text("status").notNull().default("pending"),
+  verified: boolean("verified").notNull().default(false),
+  /** uploaded proof of payment as a data URL (transfer) */
+  proofData: text("proof_data"),
+  proofMime: text("proof_mime"),
   adminNote: text("admin_note"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
@@ -48,5 +57,20 @@ export const payments = pgTable("payments", {
   confirmedBy: text("confirmed_by"),
 });
 
+/**
+ * Admin-maintained raffle settings (single row, key = "general").
+ */
+export const settings = pgTable("settings", {
+  id: serial("id").primaryKey(),
+  key: text("key").notNull().unique(),
+  /** Bank transfer payment instructions */
+  bankName: text("bank_name"),
+  bankAccountHolder: text("bank_account_holder"),
+  bankAccountNumber: text("bank_account_number"),
+  bankClabe: text("bank_clabe"),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
 export type TicketRow = typeof tickets.$inferSelect;
 export type PaymentRow = typeof payments.$inferSelect;
+export type SettingsRow = typeof settings.$inferSelect;

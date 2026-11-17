@@ -5,9 +5,9 @@ export const RAFFLE = {
   /** Name shown across the app */
   name: "Rifa Día de Muertos",
   /** Total number of tickets available */
-  totalTickets: Number(process.env.RAFFLE_TOTAL_TICKETS ?? 100),
+  totalTickets: Number(process.env.RAFFLE_TOTAL_TICKETS ?? 350),
   /** Price per ticket in MXN */
-  ticketPriceMxn: Number(process.env.RAFFLE_TICKET_PRICE ?? 50),
+  ticketPriceMxn: Number(process.env.RAFFLE_TICKET_PRICE ?? 200),
   /** Beneficiary organizations */
   organizations: ["Takumi Robotics", "LIKS Theater Company"],
   /** Prize description */
@@ -34,15 +34,18 @@ export function formatDate(date: Date | string | null | undefined): string {
   }).format(new Date(date));
 }
 
-/** Payment method labels (only cash is accepted) */
+/** Payment method labels */
 export const PAYMENT_METHODS = {
   cash: "Efectivo",
+  transfer: "Transferencia bancaria",
 } as const;
 
 export type PaymentMethod = keyof typeof PAYMENT_METHODS;
 
 export const PAYMENT_STATUS: Record<string, { label: string; tone: "default" | "secondary" | "destructive" | "outline" }> = {
   pending: { label: "Pendiente", tone: "secondary" },
+  in_review: { label: "En revisión (comprobante subido)", tone: "default" },
+  verified: { label: "Verificado · falta confirmar", tone: "default" },
   paid: { label: "Pagado ✓", tone: "secondary" },
   cancelled: { label: "Cancelado", tone: "destructive" },
 };
